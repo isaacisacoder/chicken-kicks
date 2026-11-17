@@ -21,16 +21,25 @@ async function chunk(number, descriptor) {
   }
   if (pending.has(number)) return pending.get(number);
   const task = (async () => {
-    const response = await fetch(new URL(descriptor.file, self.location.href));
-    if (!response.ok) throw new Error('Resource download failed');
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.length !== descriptor.bytes) throw new Error('Resource download truncated');
-    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
-    const actual = Array.from(digest, b => b.toString(16).padStart(2, '0')).join('');
-    if (actual !== descriptor.sha256) throw new Error('Resource checksum mismatch');
-    chunks.set(number, bytes);
-    while (chunks.size > 6) chunks.delete(chunks.keys().next().value);
-    return bytes;
+    for(let attempt=0;attempt<5;attempt++){
+      try{
+        const url=new URL(descriptor.file,self.location.href);
+        if(attempt)url.searchParams.set('verified',descriptor.sha256);
+        const response = await fetch(url,{cache:attempt?'reload':'default'});
+        if (!response.ok) throw new Error('Resource download failed: HTTP '+response.status);
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (bytes.length !== descriptor.bytes) throw new Error('Resource download truncated');
+        const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+        const actual = Array.from(digest, b => b.toString(16).padStart(2, '0')).join('');
+        if (actual !== descriptor.sha256) throw new Error('Resource checksum mismatch');
+        chunks.set(number, bytes);
+        while (chunks.size > 6) chunks.delete(chunks.keys().next().value);
+        return bytes;
+      }catch(error){
+        if(attempt===4)throw error;
+        await new Promise(resolve=>setTimeout(resolve,400*2**attempt));
+      }
+    }
   })();
   pending.set(number, task);
   try {return await task;} finally {pending.delete(number);}
