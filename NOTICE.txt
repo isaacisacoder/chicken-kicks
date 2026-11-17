@@ -1,0 +1,2 @@
+Runtime source: https://github.com/unclejahjah/cc-vita at d9717a3f98acc62f2231ea799a4689dcb715a96d
+Browser adapter changes are local to this project. No game code or assets are embedded.
