@@ -32,9 +32,10 @@ async function chunk(number, descriptor) {
         const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
         const actual = Array.from(digest, b => b.toString(16).padStart(2, '0')).join('');
         if (actual !== descriptor.sha256) throw new Error('Resource checksum mismatch');
-        chunks.set(number, bytes);
+        const expanded=descriptor.encoding==='gzip'?new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()):bytes;
+        chunks.set(number, expanded);
         while (chunks.size > 6) chunks.delete(chunks.keys().next().value);
-        return bytes;
+        return expanded;
       }catch(error){
         if(attempt===4)throw error;
         await new Promise(resolve=>setTimeout(resolve,400*2**attempt));
