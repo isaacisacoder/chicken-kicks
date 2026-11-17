@@ -6,7 +6,8 @@ const pending = new Map();
 self.addEventListener('install', event => event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 async function index() {
-  if (!indexPromise) indexPromise = fetch(new URL('resource-index.json', self.location.href), {cache: 'no-cache'}).then(async response => {
+  const version=new URL(self.location.href).searchParams.get('bundled')||'1';
+  if (!indexPromise) indexPromise = fetch(new URL('resource-index.json?v='+encodeURIComponent(version), self.location.href), {cache: 'no-cache'}).then(async response => {
     if (!response.ok) throw new Error('Resource index unavailable');
     const value = await response.json();
     if (value.schema !== 1 || value.kind !== 'chicken-kicks-bundled-resources') throw new Error('Invalid resource index');
